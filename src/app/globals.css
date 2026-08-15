@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --olive: #4b6b3a;
+  --olive-dark: #374f2a;
+  --clay: #b5502b;
+  --sand: #f6efdf;
+  --sand-deep: #ede2c8;
+  --ink: #2b2419;
+  --gold: #c99a3f;
+  --red: #b3261e;
+}
+
+body {
+  background: var(--sand);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.card {
+  background: white;
+  border: 1px solid var(--sand-deep);
+  border-radius: 1rem;
+}
+
+.btn-primary {
+  background: var(--olive);
+  color: white;
+}
+.btn-clay {
+  background: var(--clay);
+  color: white;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--olive-dark);
+  border: 1px solid var(--sand-deep);
+}
+.btn {
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--sand-deep);
+  font-size: 0.875rem;
+  background: white;
+}
+
+label.field {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+label.field > span {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--olive-dark);
+  margin-bottom: 0.25rem;
+}

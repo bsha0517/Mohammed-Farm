@@ -1,0 +1,499 @@
+// ============================================================
+// 8-4L Teddy Farm — Goat Management System
+// Prisma schema: PostgreSQL
+// Every operational table carries farmId so one deployment can
+// safely host multiple farms with fully isolated data.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------- Core: tenancy & users ----------------
+
+model Farm {
+  id        String   @id @default(cuid())
+  name      String
+  location  String?
+  currency  String   @default("PKR")
+  createdAt DateTime @default(now())
+
+  users          User[]
+  goats          Goat[]
+  breedingRecs   BreedingRecord[]
+  kiddingRecs    KiddingRecord[]
+  healthRecs     HealthRecord[]
+  vaccinations   VaccinationRecord[]
+  dewormings     DewormingRecord[]
+  weights        WeightRecord[]
+  bodyConditions BodyConditionRecord[]
+  feedTypes      FeedType[]
+  feedingRecs    FeedingRecord[]
+  inventory      InventoryItem[]
+  expenses       Expense[]
+  incomes        Income[]
+  sales          SaleRecord[]
+  mortality      MortalityRecord[]
+  culling        CullingRecord[]
+  tasks          Task[]
+  documents      Document[]
+  auditLogs      AuditLog[]
+  idCounters     IdCounter[]
+}
+
+enum Role {
+  OWNER
+  WORKER
+  VET
+}
+
+model User {
+  id           String   @id @default(cuid())
+  farmId       String
+  farm         Farm     @relation(fields: [farmId], references: [id])
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(WORKER)
+  createdAt    DateTime @default(now())
+}
+
+// Sequential human-readable IDs like TF-001 / TM-001, scoped per farm+sex.
+model IdCounter {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id])
+  prefix String // "TF" or "TM"
+  value  Int    @default(0)
+
+  @@unique([farmId, prefix])
+}
+
+// ---------------- Goats & pedigree ----------------
+
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum GoatStatus {
+  ACTIVE
+  KID
+  BREEDING
+  PREGNANT
+  LACTATING
+  FOR_SALE
+  SOLD
+  DEAD
+  CULLED
+}
+
+enum Origin {
+  BORN_ON_FARM
+  PURCHASED
+}
+
+model Goat {
+  id          String     @id @default(cuid())
+  farmId      String
+  farm        Farm       @relation(fields: [farmId], references: [id])
+  tagId       String     // display ID e.g. TF-001 — unique per farm
+  name        String
+  sex         Sex
+  breed       String     @default("Teddy")
+  dob         DateTime
+  color       String?
+  idMarks     String?
+  earTag      String?
+  status      GoatStatus @default(ACTIVE)
+  origin      Origin     @default(BORN_ON_FARM)
+  purchaseDate  DateTime?
+  purchasePrice Float?
+  seller        String?
+  sellerPhone   String?
+  purchaseLocation String?
+  notes       String?
+
+  motherId String?
+  mother   Goat?   @relation("MotherOf", fields: [motherId], references: [id])
+  motherChildren Goat[] @relation("MotherOf")
+
+  fatherId String?
+  father   Goat?   @relation("FatherOf", fields: [fatherId], references: [id])
+  fatherChildren Goat[] @relation("FatherOf")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  photos           GoatPhoto[]
+  breedingAsFemale BreedingRecord[]      @relation("BreedingFemale")
+  breedingAsMale   BreedingRecord[]      @relation("BreedingMale")
+  kiddingAsMother  KiddingRecord[]       @relation("KiddingMother")
+  kiddingAsFather  KiddingRecord[]       @relation("KiddingFather")
+  healthRecords    HealthRecord[]
+  vaccinations     VaccinationRecord[]
+  dewormings       DewormingRecord[]
+  medicineRecords  MedicineRecord[]
+  weightRecords    WeightRecord[]
+  bodyConditions   BodyConditionRecord[]
+  sale             SaleRecord?
+  mortality        MortalityRecord?
+  culling          CullingRecord?
+  documents        Document[]
+  expenses         Expense[]
+  tasks            Task[]
+
+  @@unique([farmId, tagId])
+  @@index([farmId, status])
+}
+
+model GoatPhoto {
+  id        String   @id @default(cuid())
+  goatId    String
+  goat      Goat     @relation(fields: [goatId], references: [id])
+  url       String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ---------------- Breeding / pregnancy / kidding ----------------
+
+enum MatingMethod {
+  NATURAL
+  AI
+}
+
+enum PregnancyStatus {
+  MATED
+  NOT_CONFIRMED
+  PREGNANT
+  NOT_PREGNANT
+  ABORTED
+  KIDDED
+}
+
+model BreedingRecord {
+  id       String @id @default(cuid())
+  farmId   String
+  farm     Farm   @relation(fields: [farmId], references: [id])
+
+  femaleId String
+  female   Goat   @relation("BreedingFemale", fields: [femaleId], references: [id])
+  maleId   String
+  male     Goat   @relation("BreedingMale", fields: [maleId], references: [id])
+
+  heatDate           DateTime?
+  matingDate         DateTime
+  attempts           Int             @default(1)
+  method             MatingMethod    @default(NATURAL)
+  expectedKidding    DateTime?
+  pregConfirmedDate  DateTime?
+  pregConfirmMethod  String?
+  pregStatus         PregnancyStatus @default(MATED)
+  notes              String?
+
+  statusHistory Json    @default("[]") // audit trail: [{status, date, note}]
+
+  kidding KiddingRecord?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([farmId, pregStatus])
+}
+
+model KiddingRecord {
+  id       String @id @default(cuid())
+  farmId   String
+  farm     Farm   @relation(fields: [farmId], references: [id])
+
+  breedingRecordId String?         @unique
+  breedingRecord   BreedingRecord? @relation(fields: [breedingRecordId], references: [id])
+
+  motherId String
+  mother   Goat   @relation("KiddingMother", fields: [motherId], references: [id])
+  fatherId String?
+  father   Goat?  @relation("KiddingFather", fields: [fatherId], references: [id])
+
+  kiddingDate    DateTime
+  kiddingNumber  Int      @default(1)
+  totalBorn      Int
+  bornAlive      Int
+  stillborn      Int      @default(0)
+  maleKids       Int      @default(0)
+  femaleKids     Int      @default(0)
+  complications  String?
+  assistance     Boolean  @default(false)
+  vetRequired    Boolean  @default(false)
+  notes          String?
+
+  kidIds String[] // convenience list of created Goat.id values
+
+  createdAt DateTime @default(now())
+}
+
+// ---------------- Health, vaccination, deworming, medicine ----------------
+
+model HealthRecord {
+  id           String   @id @default(cuid())
+  farmId       String
+  farm         Farm     @relation(fields: [farmId], references: [id])
+  goatId       String
+  goat         Goat     @relation(fields: [goatId], references: [id])
+  date         DateTime
+  symptoms     String?
+  diagnosis    String?
+  temperature  String?
+  veterinarian String?
+  treatment    String?
+  medicine     String?
+  dose         String?
+  duration     String?
+  cost         Float    @default(0)
+  recoveryDate DateTime?
+  notes        String?
+  createdAt    DateTime @default(now())
+}
+
+model VaccinationRecord {
+  id             String   @id @default(cuid())
+  farmId         String
+  farm           Farm     @relation(fields: [farmId], references: [id])
+  goatId         String
+  goat           Goat     @relation(fields: [goatId], references: [id])
+  vaccine        String
+  date           DateTime
+  dose           String?
+  batchNumber    String?
+  administeredBy String?
+  nextDue        DateTime?
+  notes          String?
+  createdAt      DateTime @default(now())
+}
+
+model DewormingRecord {
+  id               String   @id @default(cuid())
+  farmId           String
+  farm             Farm     @relation(fields: [farmId], references: [id])
+  goatId           String
+  goat             Goat     @relation(fields: [goatId], references: [id])
+  date             DateTime
+  dewormer         String
+  activeIngredient String?
+  dose             String?
+  weightAtTreatment Float?
+  reason           String?
+  nextReview       DateTime?
+  notes            String?
+  createdAt        DateTime @default(now())
+}
+
+model MedicineRecord {
+  id        String   @id @default(cuid())
+  goatId    String
+  goat      Goat     @relation(fields: [goatId], references: [id])
+  date      DateTime
+  medicine  String
+  dose      String?
+  reason    String?
+  cost      Float    @default(0)
+  createdAt DateTime @default(now())
+}
+
+// ---------------- Growth ----------------
+
+model WeightRecord {
+  id        String   @id @default(cuid())
+  farmId    String
+  farm      Farm     @relation(fields: [farmId], references: [id])
+  goatId    String
+  goat      Goat     @relation(fields: [goatId], references: [id])
+  date      DateTime
+  weightKg  Float
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model BodyConditionRecord {
+  id        String   @id @default(cuid())
+  farmId    String
+  farm      Farm     @relation(fields: [farmId], references: [id])
+  goatId    String
+  goat      Goat     @relation(fields: [goatId], references: [id])
+  date      DateTime
+  score     Float // 1-5 BCS scale
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+// ---------------- Feed ----------------
+
+model FeedType {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id])
+  name   String
+
+  feedingRecords FeedingRecord[]
+
+  @@unique([farmId, name])
+}
+
+model FeedingRecord {
+  id          String   @id @default(cuid())
+  farmId      String
+  farm        Farm     @relation(fields: [farmId], references: [id])
+  date        DateTime
+  feedTypeId  String
+  feedType    FeedType @relation(fields: [feedTypeId], references: [id])
+  quantity    Float
+  unit        String
+  animalGroup String
+  cost        Float    @default(0)
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+// ---------------- Inventory ----------------
+
+model InventoryItem {
+  id               String    @id @default(cuid())
+  farmId           String
+  farm             Farm      @relation(fields: [farmId], references: [id])
+  item             String
+  category         String
+  quantity         Float
+  unit             String
+  purchaseDate     DateTime?
+  cost             Float?
+  supplier         String?
+  expiryDate       DateTime?
+  minimumStockLevel Float?
+  createdAt        DateTime  @default(now())
+}
+
+// ---------------- Finance ----------------
+
+model Expense {
+  id            String   @id @default(cuid())
+  farmId        String
+  farm          Farm     @relation(fields: [farmId], references: [id])
+  date          DateTime
+  category      String
+  description   String?
+  amount        Float
+  paymentMethod String   @default("Cash")
+  goatId        String?
+  goat          Goat?    @relation(fields: [goatId], references: [id])
+  receiptUrl    String?
+  createdAt     DateTime @default(now())
+}
+
+model Income {
+  id          String   @id @default(cuid())
+  farmId      String
+  farm        Farm     @relation(fields: [farmId], references: [id])
+  date        DateTime
+  source      String // "Breeding fee", "Manure sale", "Other"
+  description String?
+  amount      Float
+  createdAt   DateTime @default(now())
+}
+
+enum SalePurpose {
+  MEAT
+  BREEDING
+  EID
+  CULL
+  OTHER
+}
+
+model SaleRecord {
+  id          String      @id @default(cuid())
+  farmId      String
+  farm        Farm        @relation(fields: [farmId], references: [id])
+  goatId      String      @unique
+  goat        Goat        @relation(fields: [goatId], references: [id])
+  buyer       String
+  buyerPhone  String?
+  saleDate    DateTime
+  price       Float
+  weightKg    Float?
+  purpose     SalePurpose @default(MEAT)
+  createdAt   DateTime    @default(now())
+}
+
+// ---------------- Mortality / culling ----------------
+
+model MortalityRecord {
+  id                String   @id @default(cuid())
+  farmId            String
+  farm              Farm     @relation(fields: [farmId], references: [id])
+  goatId            String   @unique
+  goat              Goat     @relation(fields: [goatId], references: [id])
+  dateOfDeath       DateTime
+  ageAtDeath         String?
+  suspectedCause    String?
+  confirmedCause    String?
+  vetDiagnosis      String?
+  notes             String?
+  createdAt         DateTime @default(now())
+}
+
+model CullingRecord {
+  id        String   @id @default(cuid())
+  farmId    String
+  farm      Farm     @relation(fields: [farmId], references: [id])
+  goatId    String   @unique
+  goat      Goat     @relation(fields: [goatId], references: [id])
+  date      DateTime
+  reason    String
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+// ---------------- Tasks / documents / audit ----------------
+
+model Task {
+  id        String    @id @default(cuid())
+  farmId    String
+  farm      Farm      @relation(fields: [farmId], references: [id])
+  title     String
+  category  String    @default("General")
+  dueDate   DateTime
+  goatId    String?
+  goat      Goat?     @relation(fields: [goatId], references: [id])
+  done      Boolean   @default(false)
+  doneAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  farmId    String
+  farm      Farm     @relation(fields: [farmId], references: [id])
+  goatId    String?
+  goat      Goat?    @relation(fields: [goatId], references: [id])
+  type      String // "photo" | "prescription" | "receipt" | "lab_report" | "other"
+  url       String
+  label     String?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  farmId     String
+  farm       Farm     @relation(fields: [farmId], references: [id])
+  entityType String // e.g. "BreedingRecord"
+  entityId   String
+  action     String // "status_change", "create", "update"
+  fromValue  String?
+  toValue    String?
+  byUserId   String?
+  createdAt  DateTime @default(now())
+}

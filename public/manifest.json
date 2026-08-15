@@ -1,0 +1,13 @@
+{
+  "name": "8-4L Teddy Farm - Goat Management",
+  "short_name": "Goat Farm",
+  "description": "Simple goat farm management for Teddy goat breeders",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#F6EFDF",
+  "theme_color": "#4B6B3A",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
