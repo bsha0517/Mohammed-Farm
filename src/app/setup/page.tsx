@@ -30,7 +30,8 @@ export default function SetupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8" style={{ background: "var(--sand)" }}>
       <form onSubmit={submit} className="w-full max-w-sm card p-5 space-y-3">
-        <h1 className="text-lg font-bold mb-1" style={{ color: "var(--ink)" }}>Set up your farm</h1>
+        <img src="/logo.png" alt="" className="w-20 h-20 mx-auto object-contain" />
+        <h1 className="text-lg font-bold mb-1 text-center" style={{ color: "var(--ink)" }}>Set up your farm</h1>
         <p className="text-xs text-gray-500 mb-3">This creates your farm and your Owner/Admin login. You only need to do this once.</p>
         <label className="field"><span>Farm name</span><input required value={f.farmName} onChange={(e) => set("farmName", e.target.value)} /></label>
         <label className="field"><span>Location</span><input value={f.location} onChange={(e) => set("location", e.target.value)} /></label>

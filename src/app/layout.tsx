@@ -2,9 +2,13 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "8-4L Teddy Farm — Goat Management",
-  description: "Simple goat farm management for Pakistani Teddy goat breeders",
+  title: "Mohammed Farms — Goat Management",
+  description: "Goat farm management for Mohammed Farms — Teddy Goats, Okara, Pakistan",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/logo-small.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export const viewport = {

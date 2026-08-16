@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {farm?.name} {farm?.location ? `· ${farm.location}` : ""}
             </div>
             <Link href="/dashboard" className="text-white text-lg sm:text-xl font-bold flex items-center gap-2 truncate" style={{ fontFamily: "Georgia, serif" }}>
-              <img src="/icons/herd.png" alt="" className="w-6 h-6 object-contain shrink-0" />
+              <img src="/logo-small.png" alt="" className="w-8 h-8 object-contain shrink-0 rounded-full bg-white/90 p-0.5" />
               Farm Manager
             </Link>
           </div>

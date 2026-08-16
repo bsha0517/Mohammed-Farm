@@ -1,7 +1,7 @@
 {
-  "name": "8-4L Teddy Farm - Goat Management",
-  "short_name": "Goat Farm",
-  "description": "Simple goat farm management for Teddy goat breeders",
+  "name": "Mohammed Farms - Goat Management",
+  "short_name": "Mohammed Farms",
+  "description": "Goat farm management for Mohammed Farms - Teddy Goats, Okara, Pakistan",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#F6EFDF",
