@@ -13,18 +13,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const farm = await prisma.farm.findUnique({ where: { id: (session.user as any).farmId } });
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: "var(--sand)" }}>
+    <div className="min-h-screen" style={{ background: "var(--sand)", paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
       <div className="sticky top-0 z-30 px-4 pt-4 pb-3" style={{ background: "var(--olive)" }}>
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <div>
-            <div className="text-white/70 text-[11px] tracking-widest uppercase">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-white/70 text-[10px] sm:text-[11px] tracking-widest uppercase truncate">
               {farm?.name} {farm?.location ? `· ${farm.location}` : ""}
             </div>
-            <Link href="/dashboard" className="text-white text-xl font-bold" style={{ fontFamily: "Georgia, serif" }}>
+            <Link href="/dashboard" className="text-white text-lg sm:text-xl font-bold block truncate" style={{ fontFamily: "Georgia, serif" }}>
               🐐 Farm Manager
             </Link>
           </div>
-          <SignOutButton />
+          <div className="shrink-0">
+            <SignOutButton />
+          </div>
         </div>
       </div>
       <main className="max-w-3xl mx-auto px-4 pt-4">{children}</main>
