@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireFarmSession, assertCanDelete } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { SalePurpose } from "@prisma/client";
 
@@ -51,7 +52,7 @@ export async function recordSale(input: {
   weightKg?: number;
   purpose: SalePurpose;
 }) {
-  const { farmId, role } = await requireFarmSession();
+  const { farmId, role, userId } = await requireFarmSession();
   assertCanDelete(role); // selling is a terminal/financial action — Owner only
   const goat = await prisma.goat.findFirst({ where: { id: input.goatId, farmId } });
   if (!goat) throw new Error("Goat not found on this farm.");
@@ -75,6 +76,7 @@ export async function recordSale(input: {
   revalidatePath("/finance");
   revalidatePath("/herd");
   revalidatePath("/dashboard");
+  await logAudit({ farmId, entityType: "Goat", entityId: input.goatId, action: "sold", toValue: `Rs ${input.price} to ${input.buyer}`, byUserId: userId });
   return sale;
 }
 
@@ -119,7 +121,7 @@ export async function getGoatProfitability(goatId: string) {
 /* ---------------- Mortality / culling ---------------- */
 
 export async function recordMortality(input: { goatId: string; dateOfDeath: string; ageAtDeath?: string; suspectedCause?: string; confirmedCause?: string; vetDiagnosis?: string; notes?: string }) {
-  const { farmId, role } = await requireFarmSession();
+  const { farmId, role, userId } = await requireFarmSession();
   assertCanDelete(role);
   const [rec] = await prisma.$transaction([
     prisma.mortalityRecord.create({
@@ -139,11 +141,12 @@ export async function recordMortality(input: { goatId: string; dateOfDeath: stri
   revalidatePath("/herd");
   revalidatePath("/dashboard");
   revalidatePath(`/herd/${input.goatId}`);
+  await logAudit({ farmId, entityType: "Goat", entityId: input.goatId, action: "marked_deceased", toValue: input.suspectedCause || input.confirmedCause || undefined, byUserId: userId });
   return rec;
 }
 
 export async function recordCulling(input: { goatId: string; date: string; reason: string; notes?: string }) {
-  const { farmId, role } = await requireFarmSession();
+  const { farmId, role, userId } = await requireFarmSession();
   assertCanDelete(role);
   const [rec] = await prisma.$transaction([
     prisma.cullingRecord.create({ data: { farmId, goatId: input.goatId, date: new Date(input.date), reason: input.reason, notes: input.notes || null } }),
@@ -151,6 +154,7 @@ export async function recordCulling(input: { goatId: string; date: string; reaso
   ]);
   revalidatePath("/herd");
   revalidatePath(`/herd/${input.goatId}`);
+  await logAudit({ farmId, entityType: "Goat", entityId: input.goatId, action: "culled", toValue: input.reason, byUserId: userId });
   return rec;
 }
 

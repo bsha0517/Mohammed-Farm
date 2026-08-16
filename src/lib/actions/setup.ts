@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireFarmSession } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import bcrypt from "bcryptjs";
 
 /**
@@ -44,7 +45,7 @@ export async function createFarmAndOwner(input: {
 
 /** Any signed-in user can change their own password after verifying the current one. */
 export async function changeOwnPassword(currentPassword: string, newPassword: string) {
-  const { userId } = await requireFarmSession();
+  const { userId, farmId } = await requireFarmSession();
   if (newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -55,16 +56,23 @@ export async function changeOwnPassword(currentPassword: string, newPassword: st
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  await logAudit({ farmId, entityType: "User", entityId: userId, action: "password_changed", byUserId: userId });
 }
 
 /** Owners can invite farm workers or a veterinarian — spec section 29 roles. */
 export async function inviteTeamMember(input: { farmId: string; name: string; email: string; password: string; role: "WORKER" | "VET" }) {
+  const { farmId, role, userId } = await requireFarmSession();
+  if (role !== "OWNER") throw new Error("Only farm owners can add team members.");
+  if (input.farmId !== farmId) throw new Error("Farm mismatch.");
+
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) throw new Error("An account with this email already exists.");
   const passwordHash = await bcrypt.hash(input.password, 10);
-  return prisma.user.create({
-    data: { farmId: input.farmId, name: input.name, email: input.email, passwordHash, role: input.role },
+  const user = await prisma.user.create({
+    data: { farmId, name: input.name, email: input.email, passwordHash, role: input.role },
   });
+  await logAudit({ farmId, entityType: "User", entityId: user.id, action: "invited", toValue: `${input.name} (${input.role})`, byUserId: userId });
+  return user;
 }
 
 /**
@@ -86,4 +94,5 @@ export async function removeTeamMember(targetUserId: string) {
   }
 
   await prisma.user.delete({ where: { id: targetUserId } });
+  await logAudit({ farmId, entityType: "User", entityId: targetUserId, action: "removed", fromValue: `${target.name} (${target.role})`, byUserId: userId });
 }

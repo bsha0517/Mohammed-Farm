@@ -3,9 +3,10 @@ import { requireFarmSession } from "@/lib/auth";
 import { fmtDate, daysBetween, todayISO } from "@/lib/utils";
 import Link from "next/link";
 import PregStatusForm from "@/components/forms/PregStatusForm";
+import DeleteBreedingButton from "@/components/forms/DeleteBreedingButton";
 
 export default async function BreedingPage() {
-  const { farmId } = await requireFarmSession();
+  const { farmId, role } = await requireFarmSession();
   const records = await prisma.breedingRecord.findMany({
     where: { farmId },
     include: { female: true, male: true, kidding: true },
@@ -41,9 +42,12 @@ export default async function BreedingPage() {
                 </div>
               </details>
             )}
-            {!b.kidding && b.pregStatus !== "KIDDED" && (
-              <Link href={`/breeding/${b.id}/kid`} className="text-xs font-semibold mt-2 inline-block" style={{ color: "var(--clay)" }}>Record kidding →</Link>
-            )}
+            <div className="flex items-center justify-between mt-2">
+              {!b.kidding && b.pregStatus !== "KIDDED" && (
+                <Link href={`/breeding/${b.id}/kid`} className="text-xs font-semibold inline-block" style={{ color: "var(--clay)" }}>Record kidding →</Link>
+              )}
+              {role === "OWNER" && !b.kidding && <DeleteBreedingButton breedingId={b.id} />}
+            </div>
           </div>
         );
       })}

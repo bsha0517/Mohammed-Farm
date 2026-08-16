@@ -27,6 +27,9 @@ export default async function SettingsPage() {
       {role === "OWNER" && (
         <LinkRow href="/team" title="Team & Accounts" desc="Add or remove Worker and Veterinarian logins" />
       )}
+      {role === "OWNER" && (
+        <LinkRow href="/settings/activity" title="Activity Log" desc="Who changed what, and when" />
+      )}
       <LinkRow href="/settings/password" title="Change Password" desc="Update your own login password" />
       <LinkRow href="/inventory" title="Inventory & Feed" desc="Stock levels, expiry alerts, feeding records" />
       <LinkRow href="/reports/print" title="Print Full Report" desc="Save a farm summary as PDF" />

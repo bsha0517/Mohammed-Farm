@@ -14,6 +14,9 @@ import BodyConditionForm from "@/components/forms/BodyConditionForm";
 import PhotoUploadForm from "@/components/forms/PhotoUploadForm";
 import PhotoGrid from "@/components/forms/PhotoGrid";
 import DocumentUploadForm from "@/components/forms/DocumentUploadForm";
+import MortalityForm from "@/components/forms/MortalityForm";
+import CullingForm from "@/components/forms/CullingForm";
+import DeleteGoatButton from "@/components/forms/DeleteGoatButton";
 
 const TABS = [
   ["info", "Info"], ["photos", "Photos"], ["pedigree", "Pedigree"], ["health", "Health"], ["vax", "Vaccines"],
@@ -21,7 +24,7 @@ const TABS = [
 ];
 
 export default async function GoatProfilePage({ params, searchParams }: { params: { id: string }; searchParams: { tab?: string } }) {
-  const { farmId } = await requireFarmSession();
+  const { farmId, role } = await requireFarmSession();
   const goat = await prisma.goat.findFirst({ where: { id: params.id, farmId } });
   if (!goat) notFound();
 
@@ -103,6 +106,31 @@ export default async function GoatProfilePage({ params, searchParams }: { params
           )}
           <Row label="Notes" value={goat.notes || "—"} />
         </div>
+      )}
+
+      {tab === "info" && role === "OWNER" && (
+        <details className="card p-4 mt-3">
+          <summary className="font-semibold cursor-pointer text-sm" style={{ color: "var(--red)" }}>⚠ Manage / Danger Zone</summary>
+          <div className="mt-3 space-y-4">
+            {!["DEAD", "SOLD"].includes(goat.status) && (
+              <div>
+                <div className="text-xs font-bold mb-1" style={{ color: "var(--olive-dark)" }}>Mark as Deceased</div>
+                <MortalityForm goatId={goat.id} />
+              </div>
+            )}
+            {!["DEAD", "SOLD", "CULLED"].includes(goat.status) && (
+              <div className="pt-3 border-t" style={{ borderColor: "var(--sand)" }}>
+                <div className="text-xs font-bold mb-1" style={{ color: "var(--olive-dark)" }}>Cull From Breeding</div>
+                <CullingForm goatId={goat.id} />
+              </div>
+            )}
+            <div className="pt-3 border-t" style={{ borderColor: "var(--sand)" }}>
+              <div className="text-xs font-bold mb-1" style={{ color: "var(--red)" }}>Permanently Delete</div>
+              <div className="text-xs text-gray-500 mb-2">Only for correcting a genuine mistake — normal deaths/sales/culls should use the options above instead, so history is preserved.</div>
+              <DeleteGoatButton goatId={goat.id} goatName={goat.name} />
+            </div>
+          </div>
+        </details>
       )}
 
       {tab === "photos" && (

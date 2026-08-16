@@ -1,11 +1,12 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireFarmSession } from "@/lib/auth";
+import { requireFarmSession, assertCanDelete } from "@/lib/auth";
 import { checkInbreedingWithCoefficient } from "@/lib/pedigree";
 import { addDays } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { MatingMethod, PregnancyStatus } from "@prisma/client";
+import { logAudit } from "@/lib/audit";
 
 export type BreedingInput = {
   femaleId: string;
@@ -123,5 +124,39 @@ export async function listBreedingRecords() {
     where: { farmId },
     include: { female: true, male: true, kidding: true },
     orderBy: { matingDate: "desc" },
+  });
+}
+
+/**
+ * Permanently deletes a mating record — for correcting a genuine
+ * data-entry mistake (wrong goats selected, duplicate entry, etc.).
+ * Owner-only. Refused if a kidding record already depends on it,
+ * since that kidding record created real goat profiles that would be
+ * left dangling — correct the kidding record itself in that case,
+ * not the breeding record it came from.
+ */
+export async function deleteBreedingRecord(breedingId: string) {
+  const { farmId, role, userId } = await requireFarmSession();
+  assertCanDelete(role); // Owner only
+
+  const rec = await prisma.breedingRecord.findFirst({
+    where: { id: breedingId, farmId },
+    include: { kidding: true, female: true, male: true },
+  });
+  if (!rec) throw new Error("Breeding record not found on this farm.");
+  if (rec.kidding) {
+    throw new Error("Can't delete — this mating already has a kidding record with goat profiles created from it. Correct or remove the kidding record first if it was a mistake.");
+  }
+
+  await prisma.breedingRecord.delete({ where: { id: breedingId } });
+  revalidatePath("/breeding");
+  revalidatePath("/dashboard");
+  await logAudit({
+    farmId,
+    entityType: "BreedingRecord",
+    entityId: breedingId,
+    action: "deleted",
+    fromValue: `${rec.female.name} × ${rec.male.name}`,
+    byUserId: userId,
   });
 }
