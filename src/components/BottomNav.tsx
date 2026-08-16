@@ -3,13 +3,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
-  { href: "/dashboard", label: "Home", icon: "🏠" },
-  { href: "/herd", label: "Herd", icon: "🐐" },
-  { href: "/breeding", label: "Breed", icon: "💞" },
-  { href: "/health", label: "Health", icon: "🩺" },
-  { href: "/finance", label: "Money", icon: "💰" },
-  { href: "/tasks", label: "Tasks", icon: "✅" },
-  { href: "/reports", label: "Stats", icon: "📊" },
+  { href: "/dashboard", label: "Home", icon: "/icons/home.png" },
+  { href: "/herd", label: "Herd", icon: "/icons/herd.png" },
+  { href: "/breeding", label: "Breed", icon: "/icons/breeding.png" },
+  { href: "/health", label: "Health", icon: "/icons/health.png" },
+  { href: "/finance", label: "Money", icon: "/icons/finance.png" },
+  { href: "/tasks", label: "Tasks", icon: "/icons/tasks.png" },
+  { href: "/reports", label: "Stats", icon: "/icons/reports.png" },
 ];
 
 export default function BottomNav() {
@@ -29,7 +29,12 @@ export default function BottomNav() {
               className="flex flex-col items-center justify-center py-1.5 px-0.5 gap-0.5 min-w-0"
               style={{ color: active ? "var(--olive)" : "#9C917B" }}
             >
-              <span className="text-base leading-none">{it.icon}</span>
+              <img
+                src={it.icon}
+                alt=""
+                className="w-5 h-5 object-contain"
+                style={{ opacity: active ? 1 : 0.55, filter: active ? "none" : "grayscale(30%)" }}
+              />
               <span className="text-[9px] leading-none font-semibold whitespace-nowrap">{it.label}</span>
             </Link>
           );

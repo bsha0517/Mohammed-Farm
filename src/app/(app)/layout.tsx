@@ -20,8 +20,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="text-white/70 text-[10px] sm:text-[11px] tracking-widest uppercase truncate">
               {farm?.name} {farm?.location ? `· ${farm.location}` : ""}
             </div>
-            <Link href="/dashboard" className="text-white text-lg sm:text-xl font-bold block truncate" style={{ fontFamily: "Georgia, serif" }}>
-              🐐 Farm Manager
+            <Link href="/dashboard" className="text-white text-lg sm:text-xl font-bold flex items-center gap-2 truncate" style={{ fontFamily: "Georgia, serif" }}>
+              <img src="/icons/herd.png" alt="" className="w-6 h-6 object-contain shrink-0" />
+              Farm Manager
             </Link>
           </div>
           <div className="shrink-0">
