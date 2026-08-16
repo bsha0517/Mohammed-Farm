@@ -24,7 +24,12 @@ export default function DocumentUploadForm({ goatId }: { goatId: string }) {
     setLoading(true);
     setError("");
     try {
-      await uploadDocument({ goatId, type, label, file });
+      const formData = new FormData();
+      formData.append("goatId", goatId);
+      formData.append("type", type);
+      formData.append("label", label);
+      formData.append("file", file);
+      await uploadDocument(formData);
       setFile(null);
       setLabel("");
       router.refresh();

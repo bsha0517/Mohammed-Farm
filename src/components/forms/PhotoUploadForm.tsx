@@ -13,7 +13,11 @@ export default function PhotoUploadForm({ goatId, hasPhotos }: { goatId: string;
     setLoading(true);
     setError("");
     try {
-      await uploadGoatPhoto(goatId, file, !hasPhotos);
+      const formData = new FormData();
+      formData.append("goatId", goatId);
+      formData.append("file", file);
+      formData.append("makePrimary", String(!hasPhotos));
+      await uploadGoatPhoto(formData);
       router.refresh();
     } catch (err: any) {
       setError(err.message || "Upload failed.");

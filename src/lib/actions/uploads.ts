@@ -9,8 +9,16 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5MB — plenty for a phone photo, keeps st
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"];
 const ALLOWED_DOC_TYPES = [...ALLOWED_IMAGE_TYPES, "application/pdf"];
 
-export async function uploadGoatPhoto(goatId: string, file: File, makePrimary: boolean) {
+export async function uploadGoatPhoto(formData: FormData) {
   const { farmId } = await requireFarmSession();
+
+  const goatId = formData.get("goatId") as string;
+  const file = formData.get("file") as File | null;
+  const makePrimary = formData.get("makePrimary") === "true";
+
+  if (!goatId) throw new Error("Missing goat.");
+  if (!file || file.size === 0) throw new Error("No file selected.");
+
   const goat = await prisma.goat.findFirst({ where: { id: goatId, farmId } });
   if (!goat) throw new Error("Goat not found on this farm.");
   if (file.size > MAX_BYTES) throw new Error("Photo is too large — please use one under 5MB.");
@@ -59,25 +67,32 @@ export async function deleteGoatPhoto(photoId: string, goatId: string) {
 
 /* ---------------- Documents (prescriptions, receipts, lab reports) ---------------- */
 
-export async function uploadDocument(input: { goatId?: string | null; type: string; label?: string; file: File }) {
+export async function uploadDocument(formData: FormData) {
   const { farmId } = await requireFarmSession();
-  if (input.file.size > MAX_BYTES) throw new Error("File is too large — please use one under 5MB.");
-  if (!ALLOWED_DOC_TYPES.includes(input.file.type)) throw new Error("Please upload a JPG, PNG, WEBP, HEIC image or a PDF.");
 
-  if (input.goatId) {
-    const goat = await prisma.goat.findFirst({ where: { id: input.goatId, farmId } });
+  const goatId = (formData.get("goatId") as string) || null;
+  const type = formData.get("type") as string;
+  const label = (formData.get("label") as string) || undefined;
+  const file = formData.get("file") as File | null;
+
+  if (!file || file.size === 0) throw new Error("No file selected.");
+  if (file.size > MAX_BYTES) throw new Error("File is too large — please use one under 5MB.");
+  if (!ALLOWED_DOC_TYPES.includes(file.type)) throw new Error("Please upload a JPG, PNG, WEBP, HEIC image or a PDF.");
+
+  if (goatId) {
+    const goat = await prisma.goat.findFirst({ where: { id: goatId, farmId } });
     if (!goat) throw new Error("Goat not found on this farm.");
   }
 
-  const blob = await put(`farms/${farmId}/documents/${Date.now()}-${input.file.name}`, input.file, {
+  const blob = await put(`farms/${farmId}/documents/${Date.now()}-${file.name}`, file, {
     access: "public",
   });
 
   const doc = await prisma.document.create({
-    data: { farmId, goatId: input.goatId || null, type: input.type, url: blob.url, label: input.label || null },
+    data: { farmId, goatId, type, url: blob.url, label: label || null },
   });
 
-  if (input.goatId) revalidatePath(`/herd/${input.goatId}`);
+  if (goatId) revalidatePath(`/herd/${goatId}`);
   return doc;
 }
 
