@@ -51,11 +51,11 @@ export async function recordSale(input: {
   weightKg?: number;
   purpose: SalePurpose;
 }) {
-  const { farmId } = await requireFarmSession();
+  const { farmId, role } = await requireFarmSession();
+  assertCanDelete(role); // selling is a terminal/financial action — Owner only
   const goat = await prisma.goat.findFirst({ where: { id: input.goatId, farmId } });
   if (!goat) throw new Error("Goat not found on this farm.");
   if (["DEAD", "SOLD"].includes(goat.status)) throw new Error("This goat is already marked dead or sold.");
-
   const [sale] = await prisma.$transaction([
     prisma.saleRecord.create({
       data: {
@@ -119,7 +119,8 @@ export async function getGoatProfitability(goatId: string) {
 /* ---------------- Mortality / culling ---------------- */
 
 export async function recordMortality(input: { goatId: string; dateOfDeath: string; ageAtDeath?: string; suspectedCause?: string; confirmedCause?: string; vetDiagnosis?: string; notes?: string }) {
-  const { farmId } = await requireFarmSession();
+  const { farmId, role } = await requireFarmSession();
+  assertCanDelete(role);
   const [rec] = await prisma.$transaction([
     prisma.mortalityRecord.create({
       data: {
@@ -142,7 +143,8 @@ export async function recordMortality(input: { goatId: string; dateOfDeath: stri
 }
 
 export async function recordCulling(input: { goatId: string; date: string; reason: string; notes?: string }) {
-  const { farmId } = await requireFarmSession();
+  const { farmId, role } = await requireFarmSession();
+  assertCanDelete(role);
   const [rec] = await prisma.$transaction([
     prisma.cullingRecord.create({ data: { farmId, goatId: input.goatId, date: new Date(input.date), reason: input.reason, notes: input.notes || null } }),
     prisma.goat.update({ where: { id: input.goatId }, data: { status: "CULLED" } }),

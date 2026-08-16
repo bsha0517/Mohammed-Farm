@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireFarmSession } from "@/lib/auth";
-import { checkInbreeding } from "@/lib/pedigree";
+import { checkInbreedingWithCoefficient } from "@/lib/pedigree";
 import { addDays } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { MatingMethod, PregnancyStatus } from "@prisma/client";
@@ -27,7 +27,7 @@ export type BreedingInput = {
 export async function previewInbreedingWarning(maleId: string, femaleId: string) {
   await requireFarmSession();
   if (!maleId || !femaleId) return null;
-  return checkInbreeding(maleId, femaleId);
+  return checkInbreedingWithCoefficient(maleId, femaleId);
 }
 
 export async function createBreedingRecord(input: BreedingInput) {
@@ -43,11 +43,16 @@ export async function createBreedingRecord(input: BreedingInput) {
     throw new Error("Dead or sold animals cannot be recorded as active breeding animals.");
   }
 
-  const warning = await checkInbreeding(input.maleId, input.femaleId);
+  const { warning: categoricalWarning, coefficientPercent } = await checkInbreedingWithCoefficient(input.maleId, input.femaleId);
+  const warning =
+    categoricalWarning ||
+    (coefficientPercent >= 3
+      ? `WARNING: ${male.name} and ${female.name} share ancestry — estimated inbreeding coefficient ${coefficientPercent}%. Closely related.`
+      : null);
   if (warning && !input.overrideWarning) {
     // Return the warning instead of throwing, so the UI can show it and
     // ask for explicit confirmation before resubmitting with override=true.
-    return { warning };
+    return { warning, coefficientPercent };
   }
 
   const expectedKidding = input.expectedKidding

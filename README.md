@@ -59,6 +59,18 @@ git push -u origin main
 
 ---
 
+## 3.5. Set up file storage (for goat photos and documents)
+
+Photos and document uploads (prescriptions, receipts, lab reports) use Vercel Blob storage.
+
+1. In your Vercel project: **Storage** tab → **Create Database** → **Blob** → connect it to this project.
+2. That's it for production — Vercel automatically injects `BLOB_READ_WRITE_TOKEN` into your deployment.
+3. For local development: open that same Blob store in the Vercel dashboard → **.env.local** tab → copy the token into your local `.env` file as `BLOB_READ_WRITE_TOKEN`.
+
+If you skip this step, everything else keeps working — only photo/document uploads will fail with a clear error until it's connected.
+
+---
+
 ## 4. Environment variables
 
 Copy `.env.example` to `.env` and fill in:

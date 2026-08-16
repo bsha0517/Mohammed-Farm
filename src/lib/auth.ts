@@ -61,7 +61,14 @@ export async function requireFarmSession() {
   return { farmId, role, userId: id, email: session.user.email, name: session.user.name };
 }
 
-/** Workers cannot delete or permanently alter financial/animal records — spec section 29. */
-export function assertCanDelete(role: string) {
-  if (role === "WORKER") throw new Error("Farm workers cannot delete records. Ask the farm owner.");
+/**
+ * Restricts an action to specific roles. Defaults to Owner-only, since
+ * that's the strictest and most common case (financial/terminal actions:
+ * sales, mortality, culling, retiring an animal). Pass a wider allow-list
+ * for actions Vets should also reach.
+ */
+export function assertCanDelete(role: string, allow: string[] = ["OWNER"]) {
+  if (!allow.includes(role)) {
+    throw new Error("Your account role doesn't have permission for this action. Ask the farm owner.");
+  }
 }

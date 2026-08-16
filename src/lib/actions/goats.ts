@@ -126,7 +126,7 @@ export async function updateGoat(input: GoatFormInput) {
  */
 export async function retireGoat(goatId: string, newStatus: "SOLD" | "DEAD" | "CULLED") {
   const { farmId, role } = await requireFarmSession();
-  assertCanDelete(role); // require owner/vet to change terminal status
+  assertCanDelete(role); // Owner-only — terminal status changes are financial/permanent
   const goat = await prisma.goat.findFirst({ where: { id: goatId, farmId } });
   if (!goat) throw new Error("Goat not found on this farm.");
 

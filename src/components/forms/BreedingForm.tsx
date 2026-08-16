@@ -10,6 +10,7 @@ export default function BreedingForm({ females, males }: { females: Opt[]; males
   const [f, setF] = useState({ femaleId: "", maleId: "", heatDate: "", matingDate: new Date().toISOString().slice(0, 10), method: "NATURAL", attempts: 1, expectedKidding: "", notes: "" });
   const set = (k: string, v: any) => setF((p) => ({ ...p, [k]: v }));
   const [warning, setWarning] = useState<string | null>(null);
+  const [coefficient, setCoefficient] = useState<number>(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -25,8 +26,15 @@ export default function BreedingForm({ females, males }: { females: Opt[]; males
   useEffect(() => {
     let active = true;
     if (f.maleId && f.femaleId) {
-      previewInbreedingWarning(f.maleId, f.femaleId).then((w) => active && setWarning(w));
-    } else setWarning(null);
+      previewInbreedingWarning(f.maleId, f.femaleId).then((res) => {
+        if (!active) return;
+        setWarning(res?.warning ?? null);
+        setCoefficient(res?.coefficientPercent ?? 0);
+      });
+    } else {
+      setWarning(null);
+      setCoefficient(0);
+    }
     return () => { active = false; };
   }, [f.maleId, f.femaleId]);
 
@@ -63,10 +71,12 @@ export default function BreedingForm({ females, males }: { females: Opt[]; males
           </select>
         </label>
       </div>
-      {warning && (
-        <div className="p-3 rounded-lg text-xs font-semibold" style={{ background: "#FCE8E6", color: "var(--red)" }}>
-          {warning}
-          <button type="button" onClick={(e: any) => submit(e, true)} className="block mt-2 underline">Record anyway</button>
+      {(warning || coefficient > 0) && (
+        <div className="p-3 rounded-lg text-xs font-semibold" style={{ background: warning ? "#FCE8E6" : "#FBF3E0", color: warning ? "var(--red)" : "#8A6A1E" }}>
+          {warning || `Note: estimated inbreeding coefficient ${coefficient}% (some shared ancestry, below the warning threshold).`}
+          {warning && (
+            <button type="button" onClick={(e: any) => submit(e, true)} className="block mt-2 underline">Record anyway</button>
+          )}
         </div>
       )}
       <div className="grid grid-cols-2 gap-2">

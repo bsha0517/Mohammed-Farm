@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireFarmSession } from "@/lib/auth";
 import { getPedigreeTree } from "@/lib/pedigree";
-import { getFemaleReproStats } from "@/lib/actions/kidding";
+import { getFemaleReproStats, getMaleBreedingStats } from "@/lib/actions/kidding";
 import { getGoatProfitability } from "@/lib/actions/finance";
 import { fmtDate, ageString, money } from "@/lib/utils";
 import Link from "next/link";
@@ -9,9 +9,15 @@ import { notFound } from "next/navigation";
 import HealthForm from "@/components/forms/HealthForm";
 import VaccinationForm from "@/components/forms/VaccinationForm";
 import WeightForm from "@/components/forms/WeightForm";
+import DewormingForm from "@/components/forms/DewormingForm";
+import BodyConditionForm from "@/components/forms/BodyConditionForm";
+import PhotoUploadForm from "@/components/forms/PhotoUploadForm";
+import PhotoGrid from "@/components/forms/PhotoGrid";
+import DocumentUploadForm from "@/components/forms/DocumentUploadForm";
 
 const TABS = [
-  ["info", "Info"], ["pedigree", "Pedigree"], ["health", "Health"], ["vax", "Vaccines"], ["weight", "Weight"], ["repro", "Breeding"], ["money", "Profit"],
+  ["info", "Info"], ["photos", "Photos"], ["pedigree", "Pedigree"], ["health", "Health"], ["vax", "Vaccines"],
+  ["deworm", "Deworm"], ["weight", "Weight"], ["repro", "Breeding"], ["money", "Profit"], ["docs", "Docs"],
 ];
 
 export default async function GoatProfilePage({ params, searchParams }: { params: { id: string }; searchParams: { tab?: string } }) {
@@ -30,6 +36,11 @@ export default async function GoatProfilePage({ params, searchParams }: { params
     tab === "repro" && goat.sex === "FEMALE" ? getFemaleReproStats(goat.id) : null,
   ]);
   const profitability = tab === "money" ? await getGoatProfitability(goat.id) : null;
+  const buckStats = tab === "repro" && goat.sex === "MALE" ? await getMaleBreedingStats(goat.id) : null;
+  const dewormings = tab === "deworm" ? await prisma.dewormingRecord.findMany({ where: { goatId: goat.id }, orderBy: { date: "desc" } }) : [];
+  const bodyConditions = tab === "weight" ? await prisma.bodyConditionRecord.findMany({ where: { goatId: goat.id }, orderBy: { date: "desc" } }) : [];
+  const photos = tab === "photos" || tab === "info" ? await prisma.goatPhoto.findMany({ where: { goatId: goat.id }, orderBy: { createdAt: "desc" } }) : [];
+  const documents = tab === "docs" ? await prisma.document.findMany({ where: { goatId: goat.id }, orderBy: { createdAt: "desc" } }) : [];
 
   const lastWeight = weights[weights.length - 1];
   const gain = weights.length > 1 ? (lastWeight.weightKg - weights[0].weightKg).toFixed(1) : null;
@@ -49,8 +60,12 @@ export default async function GoatProfilePage({ params, searchParams }: { params
 
       <div className="card p-4 my-3">
         <div className="flex gap-3">
-          <div className="w-20 h-20 rounded-xl flex items-center justify-center text-3xl shrink-0" style={{ background: "var(--sand-deep)" }}>
-            {goat.sex === "MALE" ? "🐐" : "🐏"}
+          <div className="w-20 h-20 rounded-xl flex items-center justify-center text-3xl shrink-0 overflow-hidden" style={{ background: "var(--sand-deep)" }}>
+            {photos.find((p) => p.isPrimary) || photos[0] ? (
+              <img src={(photos.find((p) => p.isPrimary) || photos[0]).url} alt={goat.name} className="w-full h-full object-cover" />
+            ) : (
+              goat.sex === "MALE" ? "🐐" : "🐏"
+            )}
           </div>
           <div className="flex-1">
             <div className="font-extrabold text-lg" style={{ fontFamily: "Georgia, serif" }}>{goat.name}</div>
@@ -66,7 +81,7 @@ export default async function GoatProfilePage({ params, searchParams }: { params
       </div>
 
       <div className="flex gap-1 overflow-x-auto mb-3 pb-1">
-        {TABS.filter(([k]) => k !== "repro" || goat.sex === "FEMALE").map(([k, label]) => (
+        {TABS.map(([k, label]) => (
           <Link key={k} href={`/herd/${goat.id}?tab=${k}`} className="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap"
             style={{ background: tab === k ? "var(--olive)" : "white", color: tab === k ? "white" : "var(--olive-dark)", border: "1px solid var(--sand-deep)" }}>
             {label}
@@ -87,6 +102,13 @@ export default async function GoatProfilePage({ params, searchParams }: { params
             </>
           )}
           <Row label="Notes" value={goat.notes || "—"} />
+        </div>
+      )}
+
+      {tab === "photos" && (
+        <div className="card p-4 space-y-3">
+          <PhotoUploadForm goatId={goat.id} hasPhotos={photos.length > 0} />
+          {photos.length > 0 ? <PhotoGrid goatId={goat.id} photos={photos} /> : <div className="text-center text-gray-400 py-6 text-sm">No photos yet.</div>}
         </div>
       )}
 
@@ -142,6 +164,20 @@ export default async function GoatProfilePage({ params, searchParams }: { params
         </div>
       )}
 
+      {tab === "deworm" && (
+        <div className="space-y-3">
+          <details className="card p-4"><summary className="font-semibold cursor-pointer">+ Add deworming record</summary><div className="mt-3"><DewormingForm goatId={goat.id} /></div></details>
+          {dewormings.map((d) => (
+            <div key={d.id} className="card p-3 text-sm">
+              <div className="flex justify-between"><b>{d.dewormer}</b><span className="text-gray-500">{fmtDate(d.date)}</span></div>
+              {d.reason && <div className="text-xs text-gray-500">Reason: {d.reason}</div>}
+              {d.nextReview && <div className="text-xs text-gray-500">Next review: {fmtDate(d.nextReview)}</div>}
+            </div>
+          ))}
+          {dewormings.length === 0 && <div className="text-center text-gray-400 py-6 text-sm">No deworming records yet.</div>}
+        </div>
+      )}
+
       {tab === "weight" && (
         <div className="space-y-3">
           <details className="card p-4"><summary className="font-semibold cursor-pointer">+ Add weight</summary><div className="mt-3"><WeightForm goatId={goat.id} /></div></details>
@@ -157,10 +193,19 @@ export default async function GoatProfilePage({ params, searchParams }: { params
             ))}
           </div>
           {weights.length === 0 && <div className="text-center text-gray-400 py-6 text-sm">No weight records yet.</div>}
+
+          <div className="pt-2 mt-2 border-t" style={{ borderColor: "var(--sand)" }}>
+            <div className="font-bold text-sm mb-2" style={{ color: "var(--olive-dark)" }}>Body Condition Score</div>
+            <details className="card p-3 mb-2"><summary className="font-semibold cursor-pointer text-sm">+ Add score</summary><div className="mt-3"><BodyConditionForm goatId={goat.id} /></div></details>
+            {bodyConditions.map((b) => (
+              <div key={b.id} className="flex justify-between text-sm px-1 py-1"><span>{fmtDate(b.date)}</span><b>{b.score} / 5</b></div>
+            ))}
+            {bodyConditions.length === 0 && <div className="text-center text-gray-400 py-3 text-xs">No body condition scores yet.</div>}
+          </div>
         </div>
       )}
 
-      {tab === "repro" && repro && (
+      {tab === "repro" && goat.sex === "FEMALE" && repro && (
         <div className="card p-4 space-y-2 text-sm">
           <Row label="Total kiddings" value={repro.totalKiddings} />
           <Row label="Kids born" value={repro.totalBorn} />
@@ -169,6 +214,31 @@ export default async function GoatProfilePage({ params, searchParams }: { params
           <Row label="Twin rate" value={`${repro.twinRate.toFixed(1)}%`} />
           <Row label="Kid survival rate" value={`${repro.survivalRate.toFixed(1)}%`} />
           <Row label="Last kidding" value={fmtDate(repro.lastKiddingDate)} />
+        </div>
+      )}
+
+      {tab === "repro" && goat.sex === "MALE" && buckStats && (
+        <div className="card p-4 space-y-2 text-sm">
+          <Row label="Females covered" value={buckStats.femalesCovered} />
+          <Row label="Matings recorded" value={buckStats.matingsRecorded} />
+          <Row label="Confirmed pregnant" value={buckStats.confirmedPregnant} />
+          <Row label="Pregnancy success rate" value={`${buckStats.pregnancySuccessRate.toFixed(1)}%`} />
+          <Row label="Total offspring" value={buckStats.totalOffspring} />
+          <Row label="Male offspring" value={buckStats.maleOffspring} />
+          <Row label="Female offspring" value={buckStats.femaleOffspring} />
+        </div>
+      )}
+
+      {tab === "docs" && (
+        <div className="space-y-3">
+          <details className="card p-4"><summary className="font-semibold cursor-pointer">+ Upload document</summary><div className="mt-3"><DocumentUploadForm goatId={goat.id} /></div></details>
+          {documents.map((d) => (
+            <a key={d.id} href={d.url} target="_blank" rel="noopener noreferrer" className="card p-3 text-sm flex justify-between">
+              <span>{d.label || d.type.replace("_", " ")}</span>
+              <span className="text-xs text-gray-400">{fmtDate(d.createdAt)}</span>
+            </a>
+          ))}
+          {documents.length === 0 && <div className="text-center text-gray-400 py-6 text-sm">No documents uploaded yet.</div>}
         </div>
       )}
 

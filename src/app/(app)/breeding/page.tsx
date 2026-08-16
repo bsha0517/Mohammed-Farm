@@ -32,6 +32,15 @@ export default async function BreedingPage() {
             <details className="mt-2"><summary className="text-xs font-semibold cursor-pointer" style={{ color: "var(--olive-dark)" }}>Update status</summary>
               <div className="mt-2"><PregStatusForm breedingId={b.id} current={b.pregStatus} /></div>
             </details>
+            {Array.isArray(b.statusHistory) && (b.statusHistory as any[]).length > 0 && (
+              <details className="mt-1"><summary className="text-xs font-semibold cursor-pointer text-gray-400">History</summary>
+                <div className="mt-1 space-y-0.5">
+                  {(b.statusHistory as any[]).map((h, i) => (
+                    <div key={i} className="text-[11px] text-gray-400">{fmtDate(h.date)} — {String(h.status).replace("_", " ")}</div>
+                  ))}
+                </div>
+              </details>
+            )}
             {!b.kidding && b.pregStatus !== "KIDDED" && (
               <Link href={`/breeding/${b.id}/kid`} className="text-xs font-semibold mt-2 inline-block" style={{ color: "var(--clay)" }}>Record kidding →</Link>
             )}

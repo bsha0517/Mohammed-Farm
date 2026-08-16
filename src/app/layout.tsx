@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import RegisterServiceWorker from "@/components/RegisterServiceWorker";
 
 export const metadata: Metadata = {
   title: "Mohammed Farms — Goat Management",
@@ -21,7 +22,10 @@ export const viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <RegisterServiceWorker />
+        {children}
+      </body>
     </html>
   );
 }

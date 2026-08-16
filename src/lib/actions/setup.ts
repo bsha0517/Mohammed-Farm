@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { requireFarmSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
 /**
@@ -39,6 +40,21 @@ export async function createFarmAndOwner(input: {
   });
 
   return farm;
+}
+
+/** Any signed-in user can change their own password after verifying the current one. */
+export async function changeOwnPassword(currentPassword: string, newPassword: string) {
+  const { userId } = await requireFarmSession();
+  if (newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("Account not found.");
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) throw new Error("Current password is incorrect.");
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 }
 
 /** Owners can invite farm workers or a veterinarian — spec section 29 roles. */
