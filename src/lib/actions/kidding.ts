@@ -1,10 +1,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireFarmSession } from "@/lib/auth";
+import { requireFarmSession, assertCanDelete } from "@/lib/auth";
 import { nextGoatTagId } from "@/lib/ids";
 import { revalidatePath } from "next/cache";
 import { Sex } from "@prisma/client";
+import { logAudit } from "@/lib/audit";
 
 export type KidInput = { name?: string; sex: Sex; alive: boolean };
 
@@ -107,6 +108,33 @@ export async function recordKidding(input: KiddingInput) {
   revalidatePath("/herd");
   revalidatePath("/dashboard");
   return result;
+}
+
+/**
+ * Permanently deletes a kidding record — only once every kid it
+ * produced has already been deleted individually (via
+ * deleteGoatPermanently on each kid). This is the missing link for
+ * correcting a chain of mistaken test data: delete the kid goats
+ * first, then this, which then unblocks deleting the underlying
+ * breeding record and the parent goats if needed. Owner-only.
+ */
+export async function deleteKiddingRecord(kiddingId: string): Promise<{ success: true } | { error: string }> {
+  const { farmId, role, userId } = await requireFarmSession();
+  assertCanDelete(role); // Owner only
+
+  const rec = await prisma.kiddingRecord.findFirst({ where: { id: kiddingId, farmId } });
+  if (!rec) return { error: "Kidding record not found on this farm." };
+
+  const stillExisting = await prisma.goat.count({ where: { id: { in: rec.kidIds } } });
+  if (stillExisting > 0) {
+    return { error: `Can't delete — ${stillExisting} kid goat(s) from this event still exist. Delete those goat profiles first.` };
+  }
+
+  await prisma.kiddingRecord.delete({ where: { id: kiddingId } });
+  revalidatePath("/breeding");
+  revalidatePath("/dashboard");
+  await logAudit({ farmId, entityType: "KiddingRecord", entityId: kiddingId, action: "deleted", byUserId: userId });
+  return { success: true };
 }
 
 /** Reproductive performance stats for a female — spec section 6. */

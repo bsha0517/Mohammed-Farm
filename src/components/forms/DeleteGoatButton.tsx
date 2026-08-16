@@ -13,7 +13,12 @@ export default function DeleteGoatButton({ goatId, goatName }: { goatId: string;
     setLoading(true);
     setError("");
     try {
-      await deleteGoatPermanently(goatId);
+      const result = await deleteGoatPermanently(goatId);
+      if ("error" in result) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
       router.push("/herd");
     } catch (err: any) {
       setError(err.message || "Couldn't delete this goat.");

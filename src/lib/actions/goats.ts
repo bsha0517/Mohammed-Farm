@@ -151,7 +151,7 @@ export async function retireGoat(goatId: string, newStatus: "SOLD" | "DEAD" | "C
  * deworming/body-condition history, and any breeding record that
  * never led to a kidding) is deleted along with it in one transaction.
  */
-export async function deleteGoatPermanently(goatId: string) {
+export async function deleteGoatPermanently(goatId: string): Promise<{ success: true } | { error: string }> {
   const { farmId, role, userId } = await requireFarmSession();
   assertCanDelete(role); // Owner only
 
@@ -159,17 +159,17 @@ export async function deleteGoatPermanently(goatId: string) {
     where: { id: goatId, farmId },
     include: { motherChildren: true, fatherChildren: true, breedingAsFemale: { include: { kidding: true } }, breedingAsMale: { include: { kidding: true } } },
   });
-  if (!goat) throw new Error("Goat not found on this farm.");
+  if (!goat) return { error: "Goat not found on this farm." };
 
   if (goat.motherChildren.length > 0 || goat.fatherChildren.length > 0) {
-    throw new Error(
-      `Can't delete ${goat.name} — recorded as a parent of ${goat.motherChildren.length + goat.fatherChildren.length} other goat(s) in the pedigree. Change its status instead (Culled/Dead), or update those goats' parent fields first if this was a mistaken link.`
-    );
+    return {
+      error: `Can't delete ${goat.name} — recorded as a parent of ${goat.motherChildren.length + goat.fatherChildren.length} other goat(s) in the pedigree. Change its status instead (Culled/Dead), or update those goats' parent fields first if this was a mistaken link.`,
+    };
   }
 
   const breedingWithKidding = [...goat.breedingAsFemale, ...goat.breedingAsMale].filter((b) => b.kidding);
   if (breedingWithKidding.length > 0) {
-    throw new Error(`Can't delete ${goat.name} — has a breeding record with a kidding record already recorded from it. Remove that kidding record first if it was a mistake.`);
+    return { error: `Can't delete ${goat.name} — has a breeding record with a kidding record already recorded from it. Remove that kidding record first if it was a mistake.` };
   }
 
   await prisma.$transaction([
@@ -193,6 +193,7 @@ export async function deleteGoatPermanently(goatId: string) {
   revalidatePath("/herd");
   revalidatePath("/dashboard");
   await logAudit({ farmId, entityType: "Goat", entityId: goatId, action: "deleted", fromValue: `${goat.name} (${goat.tagId})`, byUserId: userId });
+  return { success: true };
 }
 
 export async function listGoats(query?: string) {

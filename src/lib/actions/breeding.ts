@@ -135,7 +135,7 @@ export async function listBreedingRecords() {
  * left dangling — correct the kidding record itself in that case,
  * not the breeding record it came from.
  */
-export async function deleteBreedingRecord(breedingId: string) {
+export async function deleteBreedingRecord(breedingId: string): Promise<{ success: true } | { error: string }> {
   const { farmId, role, userId } = await requireFarmSession();
   assertCanDelete(role); // Owner only
 
@@ -143,9 +143,9 @@ export async function deleteBreedingRecord(breedingId: string) {
     where: { id: breedingId, farmId },
     include: { kidding: true, female: true, male: true },
   });
-  if (!rec) throw new Error("Breeding record not found on this farm.");
+  if (!rec) return { error: "Breeding record not found on this farm." };
   if (rec.kidding) {
-    throw new Error("Can't delete — this mating already has a kidding record with goat profiles created from it. Correct or remove the kidding record first if it was a mistake.");
+    return { error: "Can't delete — this mating already has a kidding record with goat profiles created from it. Correct or remove the kidding record first if it was a mistake." };
   }
 
   await prisma.breedingRecord.delete({ where: { id: breedingId } });
@@ -159,4 +159,5 @@ export async function deleteBreedingRecord(breedingId: string) {
     fromValue: `${rec.female.name} × ${rec.male.name}`,
     byUserId: userId,
   });
+  return { success: true };
 }

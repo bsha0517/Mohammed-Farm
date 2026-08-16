@@ -4,6 +4,7 @@ import { fmtDate, daysBetween, todayISO } from "@/lib/utils";
 import Link from "next/link";
 import PregStatusForm from "@/components/forms/PregStatusForm";
 import DeleteBreedingButton from "@/components/forms/DeleteBreedingButton";
+import DeleteKiddingButton from "@/components/forms/DeleteKiddingButton";
 
 export default async function BreedingPage() {
   const { farmId, role } = await requireFarmSession();
@@ -41,6 +42,12 @@ export default async function BreedingPage() {
                   ))}
                 </div>
               </details>
+            )}
+            {b.kidding && (
+              <div className="mt-2 text-xs text-gray-500 flex items-center justify-between">
+                <span>Kidding recorded {fmtDate(b.kidding.kiddingDate)} · {b.kidding.totalBorn} kid(s)</span>
+                {role === "OWNER" && <DeleteKiddingButton kiddingId={b.kidding.id} />}
+              </div>
             )}
             <div className="flex items-center justify-between mt-2">
               {!b.kidding && b.pregStatus !== "KIDDED" && (
