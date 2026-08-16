@@ -70,8 +70,6 @@ export async function addFeedType(name: string) {
   return rec;
 }
 
-const ANIMAL_GROUPS = ["Bucks", "Dry females", "Pregnant females", "Lactating females", "Kids", "Growing males", "Growing females"];
-export { ANIMAL_GROUPS };
 
 export async function addFeedingRecord(input: { date: string; feedTypeId: string; quantity: number; unit: string; animalGroup: string; cost?: number; notes?: string }) {
   const { farmId } = await requireFarmSession();

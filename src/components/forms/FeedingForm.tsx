@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { addFeedType, addFeedingRecord, ANIMAL_GROUPS } from "@/lib/actions/inventory";
+import { addFeedType, addFeedingRecord } from "@/lib/actions/inventory";
+import { ANIMAL_GROUPS } from "@/lib/constants";
 
 type FeedTypeOpt = { id: string; name: string };
 
