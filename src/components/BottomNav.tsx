@@ -16,7 +16,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t"
+      className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t print:hidden"
       style={{ borderColor: "var(--sand-deep)", paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="max-w-3xl mx-auto grid grid-cols-7">

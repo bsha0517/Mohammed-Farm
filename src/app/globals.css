@@ -75,3 +75,12 @@ label.field > span {
   color: var(--olive-dark);
   margin-bottom: 0.25rem;
 }
+
+@media print {
+  body {
+    background: white !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}

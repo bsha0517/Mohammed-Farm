@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen" style={{ background: "var(--sand)", paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
-      <div className="sticky top-0 z-30 px-4 pt-4 pb-3" style={{ background: "var(--olive)" }}>
+      <div className="sticky top-0 z-30 px-4 pt-4 pb-3 print:hidden" style={{ background: "var(--olive)" }}>
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="text-white/70 text-[10px] sm:text-[11px] tracking-widest uppercase truncate">
@@ -25,7 +25,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               Farm Manager
             </Link>
           </div>
-          <div className="shrink-0">
+          <div className="shrink-0 flex items-center gap-2.5">
+            <Link href="/inventory" className="text-white/80 text-[11px] font-semibold whitespace-nowrap">Inventory</Link>
+            {(session.user as any).role === "OWNER" && (
+              <Link href="/team" className="text-white/80 text-[11px] font-semibold whitespace-nowrap">Team</Link>
+            )}
             <SignOutButton />
           </div>
         </div>

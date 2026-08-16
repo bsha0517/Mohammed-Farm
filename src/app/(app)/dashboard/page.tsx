@@ -39,6 +39,10 @@ export default async function DashboardPage() {
 
   const openTasks = await prisma.task.findMany({ where: { farmId, done: false }, orderBy: { dueDate: "asc" }, take: 5 });
 
+  const inventoryItems = await prisma.inventoryItem.findMany({ where: { farmId } });
+  const lowStock = inventoryItems.filter((i) => i.minimumStockLevel != null && i.quantity <= i.minimumStockLevel);
+  const expiringSoon = inventoryItems.filter((i) => i.expiryDate && daysBetween(todayISO(), i.expiryDate) <= 30);
+
   const [recentKiddings, recentBreeding, recentVax, recentHealth, recentSales] = await Promise.all([
     prisma.kiddingRecord.findMany({ where: { farmId }, include: { mother: true }, orderBy: { kiddingDate: "desc" }, take: 4 }),
     prisma.breedingRecord.findMany({ where: { farmId }, include: { female: true, male: true }, orderBy: { matingDate: "desc" }, take: 4 }),
@@ -111,6 +115,17 @@ export default async function DashboardPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {(lowStock.length > 0 || expiringSoon.length > 0) && (
+        <Link href="/inventory" className="card p-4 block" style={{ borderColor: "var(--clay)" }}>
+          <div className="font-bold text-sm" style={{ color: "var(--clay)" }}>⚠ Inventory Alerts</div>
+          <div className="text-xs text-gray-500 mt-1">
+            {lowStock.length > 0 && `${lowStock.length} item(s) low on stock`}
+            {lowStock.length > 0 && expiringSoon.length > 0 && " · "}
+            {expiringSoon.length > 0 && `${expiringSoon.length} item(s) expiring within 30 days`}
+          </div>
+        </Link>
       )}
 
       {openTasks.length > 0 && (

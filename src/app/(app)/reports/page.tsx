@@ -38,6 +38,20 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-4">
+      <div className="card p-4 flex flex-col gap-2">
+        <a href="/reports/print" className="btn btn-primary text-center">🖨 Print / Save Full Report as PDF</a>
+        <div className="text-xs font-semibold mt-1" style={{ color: "var(--olive-dark)" }}>Download as CSV (opens in Excel)</div>
+        <div className="grid grid-cols-2 gap-2">
+          <a href="/api/export?type=goats" className="btn btn-ghost text-center text-xs">Goats</a>
+          <a href="/api/export?type=breeding" className="btn btn-ghost text-center text-xs">Breeding</a>
+          <a href="/api/export?type=kidding" className="btn btn-ghost text-center text-xs">Kidding</a>
+          <a href="/api/export?type=health" className="btn btn-ghost text-center text-xs">Health</a>
+          <a href="/api/export?type=vaccinations" className="btn btn-ghost text-center text-xs">Vaccinations</a>
+          <a href="/api/export?type=finance" className="btn btn-ghost text-center text-xs">Expenses</a>
+          <a href="/api/export?type=sales" className="btn btn-ghost text-center text-xs col-span-2">Sales</a>
+        </div>
+      </div>
+
       <div className="card p-4">
         <div className="font-bold text-sm" style={{ color: "var(--olive-dark)" }}>Herd Report</div>
         <div className="mt-2">{byStatus.map((b) => <Row key={b.label} label={b.label} value={b.n} />)}</div>
@@ -63,7 +77,7 @@ export default async function ReportsPage() {
         <Row label="Total sales income" value={money(totalSales)} />
         <Row label="Net cash flow" value={money(totalSales - totalExpense)} />
       </div>
-      <div className="text-center text-xs text-gray-400 pb-2">Excel/PDF export is a Phase 2 addition — see README.</div>
+      <div className="text-center text-xs text-gray-400 pb-2">Reports reflect live data at the moment you view or print them.</div>
     </div>
   );
 }

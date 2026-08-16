@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { requireFarmSession } from "@/lib/auth";
 import { getPedigreeTree } from "@/lib/pedigree";
 import { getFemaleReproStats } from "@/lib/actions/kidding";
-import { fmtDate, ageString } from "@/lib/utils";
+import { getGoatProfitability } from "@/lib/actions/finance";
+import { fmtDate, ageString, money } from "@/lib/utils";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import HealthForm from "@/components/forms/HealthForm";
@@ -10,7 +11,7 @@ import VaccinationForm from "@/components/forms/VaccinationForm";
 import WeightForm from "@/components/forms/WeightForm";
 
 const TABS = [
-  ["info", "Info"], ["pedigree", "Pedigree"], ["health", "Health"], ["vax", "Vaccines"], ["weight", "Weight"], ["repro", "Breeding"],
+  ["info", "Info"], ["pedigree", "Pedigree"], ["health", "Health"], ["vax", "Vaccines"], ["weight", "Weight"], ["repro", "Breeding"], ["money", "Profit"],
 ];
 
 export default async function GoatProfilePage({ params, searchParams }: { params: { id: string }; searchParams: { tab?: string } }) {
@@ -28,6 +29,7 @@ export default async function GoatProfilePage({ params, searchParams }: { params
     tab === "weight" ? prisma.weightRecord.findMany({ where: { goatId: goat.id }, orderBy: { date: "asc" } }) : [],
     tab === "repro" && goat.sex === "FEMALE" ? getFemaleReproStats(goat.id) : null,
   ]);
+  const profitability = tab === "money" ? await getGoatProfitability(goat.id) : null;
 
   const lastWeight = weights[weights.length - 1];
   const gain = weights.length > 1 ? (lastWeight.weightKg - weights[0].weightKg).toFixed(1) : null;
@@ -56,7 +58,10 @@ export default async function GoatProfilePage({ params, searchParams }: { params
             <div className="text-xs text-gray-500">Born {fmtDate(goat.dob)} · {ageString(goat.dob)} old</div>
             <div className="mt-1"><span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: "#E8EFE3", color: "#374F2A" }}>{goat.status.replace("_", " ")}</span></div>
           </div>
-          <Link href={`/herd/${goat.id}/edit`} className="btn btn-ghost self-start">Edit</Link>
+          <div className="flex flex-col gap-1.5 self-start">
+            <Link href={`/herd/${goat.id}/edit`} className="btn btn-ghost text-center">Edit</Link>
+            <Link href={`/herd/${goat.id}/print`} className="text-[11px] font-semibold text-center" style={{ color: "var(--olive-dark)" }}>🏷 QR tag</Link>
+          </div>
         </div>
       </div>
 
@@ -164,6 +169,24 @@ export default async function GoatProfilePage({ params, searchParams }: { params
           <Row label="Twin rate" value={`${repro.twinRate.toFixed(1)}%`} />
           <Row label="Kid survival rate" value={`${repro.survivalRate.toFixed(1)}%`} />
           <Row label="Last kidding" value={fmtDate(repro.lastKiddingDate)} />
+        </div>
+      )}
+
+      {tab === "money" && profitability && (
+        <div className="card p-4 space-y-2 text-sm">
+          <Row label="Purchase price" value={money(profitability.purchasePrice)} />
+          <Row label="Health expenses" value={money(profitability.healthExpenses)} />
+          <Row label="Other allocated expenses" value={money(profitability.otherExpenses)} />
+          <Row label="Kids produced (alive)" value={profitability.kidsProduced} />
+          <Row label="Kids sold — revenue" value={money(profitability.kidsSoldRevenue)} />
+          <Row label="This goat's own sale value" value={money(profitability.ownSaleValue)} />
+          <div className="flex justify-between pt-2 mt-1 border-t-2" style={{ borderColor: "var(--sand-deep)" }}>
+            <span className="font-bold">Estimated contribution</span>
+            <span className="font-extrabold" style={{ color: profitability.estimatedContribution >= 0 ? "var(--olive)" : "var(--red)" }}>
+              {money(profitability.estimatedContribution)}
+            </span>
+          </div>
+          <div className="text-xs text-gray-400 pt-2">{profitability.note}</div>
         </div>
       )}
     </div>
