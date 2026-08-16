@@ -50,3 +50,24 @@ export async function inviteTeamMember(input: { farmId: string; name: string; em
     data: { farmId: input.farmId, name: input.name, email: input.email, passwordHash, role: input.role },
   });
 }
+
+/**
+ * Removes a team member's account. Owner-only. Refuses to remove your own
+ * account (avoid accidental self-lockout) or the farm's last remaining
+ * Owner (a farm must always have at least one admin).
+ */
+export async function removeTeamMember(targetUserId: string) {
+  const { farmId, userId, role } = await requireFarmSession();
+  if (role !== "OWNER") throw new Error("Only farm owners can remove team members.");
+  if (targetUserId === userId) throw new Error("You can't remove your own account while signed in as it.");
+
+  const target = await prisma.user.findFirst({ where: { id: targetUserId, farmId } });
+  if (!target) throw new Error("User not found on this farm.");
+
+  if (target.role === "OWNER") {
+    const ownerCount = await prisma.user.count({ where: { farmId, role: "OWNER" } });
+    if (ownerCount <= 1) throw new Error("Can't remove the only owner — invite another owner first, or keep this account.");
+  }
+
+  await prisma.user.delete({ where: { id: targetUserId } });
+}

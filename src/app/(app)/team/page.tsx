@@ -2,30 +2,36 @@ import { prisma } from "@/lib/prisma";
 import { requireFarmSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import InviteForm from "@/components/forms/InviteForm";
-import { fmtDate } from "@/lib/utils";
+import RemoveUserButton from "@/components/forms/RemoveUserButton";
+import Link from "next/link";
 
 const ROLE_LABELS: Record<string, string> = { OWNER: "Owner / Admin", WORKER: "Farm Worker", VET: "Veterinarian" };
 
 export default async function TeamPage() {
-  const { farmId, role } = await requireFarmSession();
+  const { farmId, role, userId } = await requireFarmSession();
   if (role !== "OWNER") redirect("/dashboard");
 
   const users = await prisma.user.findMany({ where: { farmId }, orderBy: { createdAt: "asc" } });
 
   return (
     <div className="space-y-4">
+      <Link href="/settings" className="text-sm font-semibold" style={{ color: "var(--olive-dark)" }}>← Back to Settings</Link>
+
       <div className="card p-4">
         <div className="font-bold text-sm mb-2" style={{ color: "var(--olive-dark)" }}>Farm Team</div>
         <div className="space-y-2">
           {users.map((u) => (
             <div key={u.id} className="flex justify-between items-center text-sm border-b py-2" style={{ borderColor: "var(--sand)" }}>
               <div>
-                <div className="font-semibold">{u.name}</div>
+                <div className="font-semibold">{u.name} {u.id === userId && <span className="text-xs text-gray-400">(you)</span>}</div>
                 <div className="text-xs text-gray-500">{u.email}</div>
               </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: u.role === "OWNER" ? "#E8EFE3" : "#F7EBCE", color: u.role === "OWNER" ? "var(--olive-dark)" : "#8A6A1E" }}>
-                {ROLE_LABELS[u.role]}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: u.role === "OWNER" ? "#E8EFE3" : "#F7EBCE", color: u.role === "OWNER" ? "var(--olive-dark)" : "#8A6A1E" }}>
+                  {ROLE_LABELS[u.role]}
+                </span>
+                {u.id !== userId && <RemoveUserButton userId={u.id} userName={u.name} />}
+              </div>
             </div>
           ))}
         </div>

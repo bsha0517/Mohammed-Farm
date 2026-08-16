@@ -19,7 +19,7 @@ export default async function InventoryPage() {
 
   return (
     <div className="space-y-4">
-      <Link href="/dashboard" className="text-sm font-semibold" style={{ color: "var(--olive-dark)" }}>← Back to dashboard</Link>
+      <Link href="/settings" className="text-sm font-semibold" style={{ color: "var(--olive-dark)" }}>← Back to Settings</Link>
 
       {(lowStock.length > 0 || expiringSoon.length > 0) && (
         <div className="card p-4" style={{ borderColor: "var(--clay)" }}>

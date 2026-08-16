@@ -25,11 +25,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               Farm Manager
             </Link>
           </div>
-          <div className="shrink-0 flex items-center gap-2.5">
-            <Link href="/inventory" className="text-white/80 text-[11px] font-semibold whitespace-nowrap">Inventory</Link>
-            {(session.user as any).role === "OWNER" && (
-              <Link href="/team" className="text-white/80 text-[11px] font-semibold whitespace-nowrap">Team</Link>
-            )}
+          <div className="shrink-0 flex items-center gap-3">
+            <Link href="/settings" aria-label="Settings" className="text-white/90 text-xl leading-none">⚙️</Link>
             <SignOutButton />
           </div>
         </div>
